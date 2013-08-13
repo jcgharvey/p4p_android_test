@@ -12,6 +12,7 @@ import android.test.AndroidTestCase;
 import com.receiptspp.business.DateHelper;
 import com.receiptspp.business.Item;
 import com.receiptspp.business.Receipt;
+import com.receiptspp.business.UserData;
 import com.receiptspp.database.ReceiptsDataSource;
 import com.receiptspp.database.ReceiptsppContract.ItemsC;
 import com.receiptspp.database.ReceiptsppContract.ItemsReceiptsMapC;
@@ -133,22 +134,25 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 		List<Item> items = new ArrayList<Item>();
 		items.add(new Item("Latte", EXAMPLE_CATEGORY_1, 2, 3.5));
 		items.add(new Item("Beans", EXAMPLE_CATEGORY_1, 1, 15.0));
-		
+
 		Long newReceiptRow = mRds.createReceipt(receipt);
 		if (newReceiptRow != -1) {
 			// create an item for that receipt with the correct server id.
 			List<Long> createdItemIds = new ArrayList<Long>();
-			createdItemIds.add(mRds.createItem(items.get(0), EXAMPLE_SERVER_ID_1));
-			createdItemIds.add(mRds.createItem(items.get(1), EXAMPLE_SERVER_ID_1));
+			createdItemIds.add(mRds.createItem(items.get(0),
+					EXAMPLE_SERVER_ID_1));
+			createdItemIds.add(mRds.createItem(items.get(1),
+					EXAMPLE_SERVER_ID_1));
 			assertEquals(1, getTableSize(ReceiptsC.TABLE_NAME));
 			assertEquals(items.size(), getTableSize(ItemsC.TABLE_NAME));
-			assertEquals(items.size(), getTableSize(ItemsReceiptsMapC.TABLE_NAME));
+			assertEquals(items.size(),
+					getTableSize(ItemsReceiptsMapC.TABLE_NAME));
 			// get the mapping from the map table for this item row.
 			List<Long> retrievedItemIds = getItemIdsForReceiptId(newReceiptRow);
 			assertEquals(items.size(), retrievedItemIds.size());
 			// all the createdItemIds should also be in the itemIds
-			for(Long l : createdItemIds){
-				if(!retrievedItemIds.contains(l)){
+			for (Long l : createdItemIds) {
+				if (!retrievedItemIds.contains(l)) {
 					fail();
 				}
 			}
@@ -156,8 +160,8 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 			fail();
 		}
 	}
-	
-	public void testAddReceiptContainingItems(){
+
+	public void testAddReceiptContainingItems() {
 		// create a receipt.
 		Receipt receipt = new Receipt(EXAMPLE_STORE_1, EXAMPLE_CATEGORY_1,
 				new DateHelper().getFullDateTime(), EXAMPLE_SERVER_ID_1, 0.0);
@@ -165,25 +169,74 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 		List<Item> items = new ArrayList<Item>();
 		items.add(new Item("Latte", EXAMPLE_CATEGORY_1, 2, 3.5));
 		items.add(new Item("Beans", EXAMPLE_CATEGORY_1, 1, 15.0));
-		for (Item i : items){
+		for (Item i : items) {
 			receipt.addItem(i);
 		}
-		
+
 		Long newReceiptRow = mRds.createReceipt(receipt);
 		if (newReceiptRow != -1) {
 			assertEquals(1, getTableSize(ReceiptsC.TABLE_NAME));
 			assertEquals(items.size(), getTableSize(ItemsC.TABLE_NAME));
-			assertEquals(items.size(), getTableSize(ItemsReceiptsMapC.TABLE_NAME));
-			List<Item> retrievedItems = mRds.readItemsForServerId(EXAMPLE_SERVER_ID_1);
+			assertEquals(items.size(),
+					getTableSize(ItemsReceiptsMapC.TABLE_NAME));
+			List<Item> retrievedItems = mRds
+					.readItemsForServerId(EXAMPLE_SERVER_ID_1);
 			assertEquals(items.size(), retrievedItems.size());
-			for(Item retrievedItem : retrievedItems){
-				if(!items.contains(retrievedItem)){
+			for (Item retrievedItem : retrievedItems) {
+				if (!items.contains(retrievedItem)) {
 					fail();
 				}
 			}
 		} else {
 			fail();
 		}
+	}
+
+	public void testInsertionOfDuplicateReceiptServerIdsFails() {
+		Long newReceiptRow1 = mRds.createReceipt(mReceipt);
+		// check we added the first receipt
+		assertTrue(newReceiptRow1 != -1);
+		Long newReceiptRow2 = mRds.createReceipt(mReceipt);
+		// check the second add failed
+		assertTrue(newReceiptRow2 == -1);
+	}
+
+	public void testUserInstantGreatestServerReceiptIdSet() {
+		UserData userInstance = UserData.getInstance();
+		int oldId = userInstance.getGreatestServerReceiptId();
+		// new instance so id should be 0
+		assertEquals(0, oldId);
+		// create receipt
+		Long newReceiptRow1 = mRds.createReceipt(mReceipt);
+		if (newReceiptRow1 == -1) {
+			fail();
+		} else {
+			assertTrue(userInstance.getGreatestServerReceiptId() > oldId);
+		}
+	}
+
+	public void testUserInstantGreatestServerReceiptIdUpdate() {
+		UserData userInstance = UserData.getInstance();
+		int oldId = userInstance.getGreatestServerReceiptId();
+		// new instance so id should be 0
+		assertEquals(0, oldId);
+		// attempt to set to 0, should still be 0
+		userInstance.setGreatestServerReceiptId(0);
+		assertEquals(0, userInstance.getGreatestServerReceiptId());
+		userInstance.setGreatestServerReceiptId(1);
+		assertEquals(1, userInstance.getGreatestServerReceiptId());
+	}
+
+	public void testUserInstantGreatestServerReceiptIdReset() {
+		UserData userInstance = UserData.getInstance();
+		int oldId = userInstance.getGreatestServerReceiptId();
+		// new instance so id should be 0
+		assertEquals(0, oldId);
+		// attempt to set to 0, should still be 0
+		userInstance.setGreatestServerReceiptId(1);
+		assertEquals(1, userInstance.getGreatestServerReceiptId());
+		userInstance.resetGreatestServerReceiptId();
+		assertEquals(0, userInstance.getGreatestServerReceiptId());
 	}
 
 	private int getTableSize(String tableName) {
