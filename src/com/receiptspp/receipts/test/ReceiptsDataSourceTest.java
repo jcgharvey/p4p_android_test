@@ -3,10 +3,11 @@ package com.receiptspp.receipts.test;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 import android.test.AndroidTestCase;
-import android.util.Log;
 
 import com.receiptspp.business.DateHelper;
 import com.receiptspp.business.Item;
@@ -34,7 +35,7 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 	protected void setUp() throws Exception {
 		super.setUp();
 		mRds = new ReceiptsDataSource(getContext());
-		mDbHelper = new ReceiptsppDbHelper(getContext());	
+		mDbHelper = new ReceiptsppDbHelper(getContext());
 		String date = new DateHelper().getFullDateTime();
 		mReceipt = new Receipt(EXAMPLE_STORE_1, EXAMPLE_CATEGORY_1, date,
 				EXAMPLE_SERVER_ID_1, EXAMPLE_TOTAL_1);
@@ -92,7 +93,7 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 		if (newReceiptRow != -1) {
 			// create an item for that receipt with the correct server id.
 			Item item = new Item("Flat White", EXAMPLE_CATEGORY_1, 2, 5.0);
-			long newItemRow = mRds.createItem(item,EXAMPLE_SERVER_ID_1);
+			long newItemRow = mRds.createItem(item, EXAMPLE_SERVER_ID_1);
 			// check all the tables have 1 row.
 			assertEquals(1, getTableSize(ReceiptsC.TABLE_NAME));
 			assertEquals(1, getTableSize(ItemsC.TABLE_NAME));
@@ -103,6 +104,24 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 			assertEquals(newItemRow, (long) itemIds.get(0));
 		} else {
 			fail();
+		}
+	}
+
+	public void testForeignKey() {
+		// we will try to make a failing insert into the map.
+		SQLiteDatabase db = mDbHelper.getWritableDatabase();
+		// database is empty so if we reference the 1 id in both receipts and
+		// items table the db should break
+		ContentValues values = new ContentValues();
+		values.put(ItemsReceiptsMapC.COLUMN_NAME_ITEMS_ID, 123);
+		values.put(ItemsReceiptsMapC.COLUMN_NAME_RECEIPTS_ID, 123);
+		try {
+			db.insertOrThrow(ItemsReceiptsMapC.TABLE_NAME, null, values);
+			//should throw
+			fail();
+		} catch (SQLiteException e) {
+			// exception was thrown there pass/return
+			return;
 		}
 	}
 
@@ -128,7 +147,7 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 		Cursor cursor = db.query(ItemsReceiptsMapC.TABLE_NAME, projection,
 				selection, selectionArgs, null, null, null);
 		cursor.moveToFirst();
-		while(!cursor.isAfterLast()){
+		while (!cursor.isAfterLast()) {
 			ids.add(cursor.getLong(0));
 			cursor.moveToNext();
 		}
