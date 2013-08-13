@@ -117,12 +117,46 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 		values.put(ItemsReceiptsMapC.COLUMN_NAME_RECEIPTS_ID, 123);
 		try {
 			db.insertOrThrow(ItemsReceiptsMapC.TABLE_NAME, null, values);
-			//should throw
+			// should throw
 			fail();
 		} catch (SQLiteException e) {
 			// exception was thrown there pass/return
 			return;
 		}
+	}
+
+	public void testGetAllItemsInReceipt() {
+		// create a receipt add it.
+		Receipt receipt = new Receipt(EXAMPLE_STORE_1, EXAMPLE_CATEGORY_1,
+				new DateHelper().getFullDateTime(), EXAMPLE_SERVER_ID_1, 0.0);
+		// add some items.
+		List<Item> items = new ArrayList<Item>();
+		items.add(new Item("Latte", EXAMPLE_CATEGORY_1, 2, 3.5));
+		items.add(new Item("Beans", EXAMPLE_CATEGORY_1, 1, 15.0));
+		
+		Long newReceiptRow = mRds.createReceipt(receipt);
+		if (newReceiptRow != -1) {
+			// create an item for that receipt with the correct server id.
+			List<Long> createdItemIds = new ArrayList<Long>();
+			createdItemIds.add(mRds.createItem(items.get(0), EXAMPLE_SERVER_ID_1));
+			createdItemIds.add(mRds.createItem(items.get(1), EXAMPLE_SERVER_ID_1));
+			// check all the tables have 1 row.
+			assertEquals(1, getTableSize(ReceiptsC.TABLE_NAME));
+			assertEquals(items.size(), getTableSize(ItemsC.TABLE_NAME));
+			assertEquals(items.size(), getTableSize(ItemsReceiptsMapC.TABLE_NAME));
+			// get the mapping from the map table for this item row.
+			List<Long> itemIds = getItemIdsForReceiptId(newReceiptRow);
+			assertEquals(items.size(), itemIds.size());
+			// all the createdItemIds should also be in the itemIds
+			for(Long l : createdItemIds){
+				if(!itemIds.contains(l)){
+					fail();
+				}
+			}
+		} else {
+			fail();
+		}
+
 	}
 
 	private int getTableSize(String tableName) {
