@@ -19,8 +19,6 @@ import com.receiptspp.database.ReceiptsppContract.ItemsReceiptsMapC;
 import com.receiptspp.database.ReceiptsppContract.ReceiptsC;
 import com.receiptspp.database.ReceiptsppDbHelper;
 
-;
-
 public class ReceiptsDataSourceTest extends AndroidTestCase {
 
 	private static final String EXAMPLE_STORE_1 = "Coffee General";
@@ -54,6 +52,21 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 	}
 
 	public void testDeleteAllReceitps() {
+		// create a receipt.
+		Receipt receipt = new Receipt(EXAMPLE_STORE_1, EXAMPLE_CATEGORY_1,
+				new DateHelper().getFullDateTime(), EXAMPLE_SERVER_ID_1, 0.0);
+		// give it some items.
+		List<Item> items = new ArrayList<Item>();
+		items.add(new Item("Latte", EXAMPLE_CATEGORY_1, 2, 3.5));
+		items.add(new Item("Beans", EXAMPLE_CATEGORY_1, 1, 15.0));
+		for (Item i : items) {
+			receipt.addItem(i);
+		}
+		Long newReceiptRow = mRds.createReceipt(receipt);
+		assertEquals(1, getTableSize(ReceiptsC.TABLE_NAME));
+		assertEquals(items.size(), getTableSize(ItemsC.TABLE_NAME));
+		assertEquals(items.size(), getTableSize(ItemsReceiptsMapC.TABLE_NAME));
+		
 		mRds.deleteAllReceitps();
 		assertEquals(0, getTableSize(ReceiptsC.TABLE_NAME));
 		assertEquals(0, getTableSize(ItemsC.TABLE_NAME));
