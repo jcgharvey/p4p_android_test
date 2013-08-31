@@ -66,7 +66,7 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 		assertEquals(1, getTableSize(ReceiptsC.TABLE_NAME));
 		assertEquals(items.size(), getTableSize(ItemsC.TABLE_NAME));
 		assertEquals(items.size(), getTableSize(ItemsReceiptsMapC.TABLE_NAME));
-		
+
 		mRds.deleteAllReceitps();
 		assertEquals(0, getTableSize(ReceiptsC.TABLE_NAME));
 		assertEquals(0, getTableSize(ItemsC.TABLE_NAME));
@@ -252,8 +252,27 @@ public class ReceiptsDataSourceTest extends AndroidTestCase {
 		assertEquals(0, userInstance.getGreatestServerReceiptId());
 	}
 
+	public void testGetLastDate() {
+		// create a receipt.
+		//yyyy-MM-dd HH:mm:ss
+		List<Receipt> receipts = new ArrayList<Receipt>();
+		receipts.add(new Receipt("Cafe", "Dining","2012-12-01 00:00:00", 1, 0.0));
+		receipts.add(new Receipt("McDonalds", "Dining","2013-01-11 00:00:00", 2, 0.0));
+		receipts.add(new Receipt("Amazon", "Clothes","2013-01-12 00:00:00", 3, 0.0));
+		receipts.add(new Receipt("Pb Tech", "Electronics","2013-01-13 00:00:00", 4, 0.0));
+		
+		for(Receipt r : receipts){
+			mRds.createReceipt(r);
+		}
+		
+		DateHelper date = mRds.readLastDate();
+		assertEquals("2013", date.getYear());
+		assertEquals("01", date.getMonth());
+		assertEquals("13", date.getDay());
+	}
+
 	private int getTableSize(String tableName) {
-		SQLiteDatabase db = mDbHelper.getReadableDatabase();
+		SQLiteDatabase db = mDbHelper.getReadableDatabase(); 
 		int tableCols = -1;
 
 		String sql = "SELECT * FROM " + tableName;
